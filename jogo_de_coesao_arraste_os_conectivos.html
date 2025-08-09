@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jogo de Coesão – Arraste os Conectivos</title>
+  <style>
+    :root{--bg:#0b0b10;--panel:#14141f;--ink:#e9e9f3;--muted:#a9abc2;--accent:#6ee7ff;--good:#46d18f;--bad:#ff6b6b;--gap:14px;--radius:16px;--shadow:0 10px 30px rgba(0,0,0,.35)}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background: radial-gradient(1200px 1200px at 80% -10%, #1b1b28 0%, var(--bg) 60%); color:var(--ink);line-height:1.6}
+    .wrap{max-width:980px;margin:0 auto;padding:22px}
+    .card{background:var(--panel);border:1px solid #1f2030;border-radius:var(--radius);box-shadow:var(--shadow)}
+    .muted{color:var(--muted)}
+    .pill{background:#0f1020;border:1px solid #22233b;color:var(--ink);padding:6px 10px;border-radius:999px;font-size:.92rem}
+    .score{font-weight:700}
+    .row{display:flex;flex-wrap:wrap;gap:var(--gap)}
+    input[type=text]{background:#0c0d18;border:1px solid #262740;color:var(--ink);padding:12px;border-radius:12px;font-size:16px;min-width:160px;width:100%}
+    button{background:linear-gradient(180deg,#2a2b57,#1a1b3b);color:var(--ink);border:1px solid #3a3c7a;border-radius:12px;padding:12px 16px;font-weight:600;letter-spacing:.2px;box-shadow:var(--shadow);cursor:pointer;transition:.2s; -webkit-tap-highlight-color:transparent}
+    button:hover{transform:translateY(-1px)}
+    button:active{transform:translateY(0) scale(.98)}
+    .screen{display:none}
+    .screen.active{display:block}
+    .hud{display:grid;grid-template-columns:1fr auto auto;gap:var(--gap);align-items:center;padding:12px 14px}
+    .bank{padding:12px}
+    .token{display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;margin:6px;min-width:84px;min-height:40px;background:#10122a;border:1px dashed #3b3f86;color:var(--ink);border-radius:12px;font-weight:700;user-select:none;touch-action:none}
+    .token[data-state=placed]{opacity:.35;filter:grayscale(.3);pointer-events:none}
+    .text{padding:18px}
+    .para{font-size:18px}
+    .drop{display:inline-flex;align-items:center;justify-content:center;min-width:88px;min-height:34px;border-bottom:2px dashed #3a3d6a;color:#8f92b8;margin:0 3px 2px 3px;padding:0 4px;border-radius:6px}
+    .drop.active{outline:2px dashed var(--accent);outline-offset:4px}
+    .drop.filled{border-bottom-color:transparent;color:var(--ink);background:#10122a;border:1px solid #2e3163;padding:2px 8px}
+    .drop.correct{background:rgba(70,209,143,.12);border-color:var(--good)}
+    .drop.wrong{background:rgba(255,107,107,.12);border-color:var(--bad)}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;padding:12px;justify-content:flex-end}
+    .notice{padding:10px 14px;color:#dfe8ff;background:#0f1228;border:1px solid #212656;border-radius:12px}
+    .footer{padding:10px 14px;color:var(--muted);text-align:center}
+    .kbd{padding:2px 6px;border:1px solid #29305e;border-radius:6px;background:#0f1228}
+    @media (max-width:700px){.hud{grid-template-columns:1fr 1fr}.bank .token{min-width:72px}.para{font-size:17px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- TELA INICIAL -->
+    <section id="screen-start" class="screen active">
+      <div class="card" style="padding:22px">
+        <h1 style="margin:0 0 10px 0">Jogo de Coesão</h1>
+        <p class="muted" style="margin-top:0">Preencha seus dados e toque em <b>Começar</b>. O tempo inicia imediatamente.</p>
+        <div class="row">
+          <div style="flex:1;min-width:240px"><label class="muted">Nome do aluno</label><input id="student" type="text" placeholder="Seu nome" /></div>
+          <div style="flex:1;min-width:180px"><label class="muted">Turma</label><input id="klass" type="text" placeholder="Ex.: 3º A" /></div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px"><button id="begin">Começar</button></div>
+      </div>
+    </section>
+
+    <!-- TELA DO JOGO -->
+    <section id="screen-game" class="screen">
+      <section class="card hud">
+        <div class="pill">Aluno: <span id="who" class="muted">—</span> • Turma: <span id="klassWho" class="muted">—</span></div>
+        <div class="pill">Conectivos corretos: <span id="score" class="score">0</span>/<span id="total" class="score">0</span></div>
+        <div class="pill">Tempo: <span id="timer" class="score">00:00</span></div>
+      </section>
+      <section class="card bank" id="bank" aria-label="Banco de conectivos"></section>
+      <section class="card text" aria-label="Texto do exercício">
+        <p class="para" id="paragraph">
+          Hoje de manhã, acordei mais cedo; <span class="drop" data-answer="porque"></span> precisava revisar os conteúdos do simulado. Peguei o ônibus da linha do bairro e sentei perto da janela; <span class="drop" data-answer="enquanto"></span> o ônibus seguia, eu conferia meus resumos no caderno. O trânsito estava pesado, <span class="drop" data-answers="mas,porém"></span> consegui chegar a tempo na escola. Fui direto para a sala; <span class="drop" data-answer="antes de"></span> tocar o sinal, organizei as atividades nos grupos. Quis começar pela leitura de um texto; <span class="drop" data-answers="em seguida, então"></span> pedi para que destacassem as ideias principais. Alguns alunos estavam dispersos, <span class="drop" data-answers="então,por isso"></span> propus um desafio rápido de perguntas e respostas. Eles participaram bem; <span class="drop" data-answers="por isso, logo, portanto, assim, em seguida"></span> avançamos para a parte de coesão. Mostrei um parágrafo sem conectivos <span class="drop" data-answer="para"></span> eles perceberem como o sentido ficava truncado. Introduzi a lista de conjunções mais usadas. <span class="drop" data-answer="além disso"></span>, comentei quando cada uma se aplica. No final da aula, choveu forte, <span class="drop" data-answers="mas,porém"></span> todos ficaram tranquilos porque a escola é coberta.
+        </p>
+      </section>
+      <div class="toolbar"><button id="reset">Reiniciar</button><span class="notice">Dica: se o arrastar não funcionar no seu celular, toque no conectivo e depois toque na lacuna.</span></div>
+      <p class="footer">Coesão: use conectivos para ligar ideias. Atalhos: <span class="kbd">toque</span> um conectivo, depois uma lacuna — ou arraste e solte.</p>
+    </section>
+
+    <!-- TELA FINAL -->
+    <section id="screen-end" class="screen">
+      <div class="card" style="padding:22px; text-align:center">
+        <h2>Resultado</h2>
+        <p><strong>Aluno:</strong> <span id="finalName">—</span></p>
+        <p><strong>Turma:</strong> <span id="finalClass">—</span></p>
+        <p><strong>Pontuação:</strong> <span id="finalScore">0</span></p>
+        <p><strong>Tempo:</strong> <span id="finalTime">00:00</span></p>
+        <div style="margin-top:16px">
+          <button id="playAgain">Jogar novamente</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const CONNECTIVES = [
+      "porque","enquanto","mas","porém","antes de","em seguida","então","por isso","portanto","assim","logo","além disso", "para"
+    ];
+
+    const state = { selectedToken:null, score:0, total:0, started:false, startTime:null, timerId:null };
+    const $ = s => document.querySelector(s); const $$ = s => Array.from(document.querySelectorAll(s));
+
+    function pad(n){return String(n).padStart(2,'0')}
+    function fmtTime(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60),ss=s%60;return pad(m)+":"+pad(ss)}
+    function swapScreen(id){ $$('.screen').forEach(s=>s.classList.remove('active')); $(id).classList.add('active'); }
+
+    function init(){
+      $('#student').value = localStorage.getItem('studentName')||'';
+      $('#klass').value = localStorage.getItem('studentClass')||'';
+      $('#begin').addEventListener('click', ()=>{
+        const name=$('#student').value.trim();
+        const klass=$('#klass').value.trim();
+        if(!name||!klass){alert('Preencha nome e turma.');return;}
+        localStorage.setItem('studentName',name);
+        localStorage.setItem('studentClass',klass);
+        $('#who').textContent=name;
+        $('#klassWho').textContent=klass;
+        swapScreen('#screen-game');
+        startTimer();
+        buildBank();
+        setupDragAndTap();
+        state.total=$$('.drop').length;
+        $('#total').textContent=state.total;
+      });
+      $('#reset').addEventListener('click', resetGame);
+      document.addEventListener('click', (e)=>{ if(e.target && e.target.id==='playAgain'){ resetToStart(); }});
+    }
+
+    function startTimer(){
+      state.started=true;
+      state.startTime=Date.now();
+      if(state.timerId) clearInterval(state.timerId);
+      state.timerId=setInterval(()=>{$('#timer').textContent=fmtTime(Date.now()-state.startTime)},250);
+    }
+
+    function buildBank(){
+      const bank=$('#bank');
+      bank.innerHTML='';
+      [...CONNECTIVES].sort(()=>Math.random()-0.5).forEach(word=>{
+        const b=document.createElement('button');
+        b.className='token';
+        b.textContent=word;
+        b.setAttribute('draggable','true');
+        b.dataset.word=word;
+        b.addEventListener('click',()=>selectToken(b));
+        b.addEventListener('dragstart',ev=>{
+          ev.dataTransfer.setData('text/plain',word);
+          setTimeout(()=>b.classList.add('dragging'));
+        });
+        b.addEventListener('dragend',()=>b.classList.remove('dragging'));
+        bank.appendChild(b);
+      });
+    }
+
+    function selectToken(btn){
+      if(btn.dataset.state==='placed') return;
+      if(state.selectedToken){ state.selectedToken.classList.remove('active'); }
+      state.selectedToken=btn;
+      btn.classList.add('active');
+    }
+
+    function setupDragAndTap(){
+      $$('.drop').forEach(drop=>{
+        drop.addEventListener('dragover',ev=>{ev.preventDefault(); drop.classList.add('active')});
+        drop.addEventListener('dragleave',()=>drop.classList.remove('active'));
+        drop.addEventListener('drop',ev=>{
+          ev.preventDefault();
+          drop.classList.remove('active');
+          const w=ev.dataTransfer.getData('text/plain');
+          tryPlace(drop,w);
+        });
+        drop.addEventListener('click',()=>{
+          if(!state.selectedToken) return;
+          tryPlace(drop,state.selectedToken.dataset.word);
+        });
+      });
+    }
+
+    function tryPlace(drop,word){
+      if(drop.classList.contains('filled')) return;
+      const needSingle = drop.getAttribute('data-answer');
+      const needMulti = drop.getAttribute('data-answers');
+      const norm = s=> (s||'').toLowerCase().replace(/\s+/g,' ').trim();
+      const ok = needMulti ? needMulti.split(',').map(norm).includes(norm(word)) : (norm(word)===norm(needSingle));
+      if(ok){
+        drop.textContent = word;
+        drop.classList.add('filled','correct');
+        const token=findToken(word);
+        if(token){
+          token.dataset.state='placed';
+          token.setAttribute('aria-disabled','true');
+          token.style.pointerEvents='none';
+          token.style.opacity='.35';
+        }
+        state.score++;
+        $('#score').textContent=state.score;
+        checkWin();
+      } else { flash(drop,'wrong'); }
+    }
+
+    function findToken(word){ return $$('#bank .token').find(t=>t.dataset.word===word); }
+    function flash(el,cls){ el.classList.add(cls); setTimeout(()=>el.classList.remove(cls),700); }
+
+    function checkWin(){
+      if(state.score===state.total){
+        clearInterval(state.timerId);
+        const t=$('#timer').textContent;
+        showFinalScreen(t);
+      }
+    }
+
+    function resetGame(){
+      clearInterval(state.timerId);
+      $('#timer').textContent='00:00';
+      state.started=false;
+      state.score=0;
+      $('#score').textContent='0';
+      $$('.drop').forEach(d=>{ d.textContent=''; d.className='drop'; });
+      buildBank();
+      setupDragAndTap();
+      startTimer();
+      state.selectedToken=null;
+    }
+
+    function showFinalScreen(timeStr){
+      const name=$('#who').textContent||'Aluno';
+      const klass=$('#klassWho').textContent||'—';
+      $('#finalName').textContent=name;
+      $('#finalClass').textContent=klass;
+      $('#finalScore').textContent = state.total + "/" + state.total;
+      $('#finalTime').textContent=timeStr;
+      swapScreen('#screen-end');
+    }
+
+    function resetToStart(){
+      clearInterval(state.timerId);
+      state.started=false;
+      state.score=0;
+      $('#score').textContent='0';
+      $('#timer').textContent='00:00';
+      $$('.drop').forEach(d=>{ d.textContent=''; d.className='drop'; });
+      swapScreen('#screen-start');
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
