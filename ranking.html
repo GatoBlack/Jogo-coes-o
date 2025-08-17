@@ -136,7 +136,7 @@
           <td>${escapeHtml(r.aluno || '—')}</td>
           <td>${escapeHtml(r.turma || '—')}</td>
           <td><b>${Number(r.score)||0}</b></td>
-          <td>${Number(r.tempo_segundos)||0}</td>
+          <td>${formatTime(Number(r.tempo_segundos)||0)}</td>
           <td class="muted">${formatDate(r.ts)}</td>
         `;
         if (changed && i < 5) tr.classList.add('blink');
@@ -157,6 +157,11 @@
     if (isNaN(d)) return '—';
     return d.toLocaleTimeString();
   }
+  function formatTime(seconds){
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
 })();
 </script>
 </body>
