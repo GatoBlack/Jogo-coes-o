@@ -226,51 +226,35 @@
       state.selectedToken=null;
     }
 
-   <script>
+   
 // ... (seu código)
 function showFinalScreen(timeStr){
   const name  = $('#who').textContent || 'Aluno';
   const klass = $('#klassWho').textContent || '—';
-  const score = state.total;             // no seu jogo, termina com tudo correto
-  // converte "MM:SS" em segundos
-  const [mm, ss] = timeStr.split(':').map(n=>parseInt(n,10));
-  const tempo_segundos = (mm||0)*60 + (ss||0);
 
-  // sala_id: defina um código simples para a turma/partida (ex.: "3A-manha-01")
-  const sala_id = (localStorage.getItem('sala_id') || 'SALA-DEMO');
-
-  fetch('https://script.google.com/macros/s/AKfycbx4he8aKfhpHBDAvK5R5t1U83H3LdkR-QhIQE8mMZHACSFkE98Hgg09Hm3im7496JaQ/exec', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ sala_id, aluno:name, turma:klass, score, tempo_segundos })
-  }).catch(()=>{ /* silêncio: não quebra o jogo se falhar */ });
-
-  // ... resto da sua função:
-  $('#finalName').textContent=name;
-  $('#finalClass').textContent=klass;
+  // Preenche a tela final
+  $('#finalName').textContent  = name;
+  $('#finalClass').textContent = klass;
   $('#finalScore').textContent = state.total + "/" + state.total;
-  $('#finalTime').textContent=timeStr;
-    // ⬇️ ADICIONE DAQUI …
-  // Converte "MM:SS" em segundos
-  const [mm, ss] = timeStr.split(':').map(n=>parseInt(n, 10));
-  const tempo_segundos = (mm||0)*60 + (ss||0);
+  $('#finalTime').textContent  = timeStr;
 
+  // Converte "MM:SS" para segundos
+  const [mm, ss] = timeStr.split(':').map(n => parseInt(n, 10));
+  const tempo_segundos = (mm || 0) * 60 + (ss || 0);
+
+  // Código da sala salvo na tela inicial
   const sala_id = localStorage.getItem('sala_id') || 'SALA-DEMO';
-  const payload = {
-    sala_id,
-    aluno: name,
-    turma: klass,
-    score: state.total,        // neste jogo todos os acertos
-    tempo_segundos
-  };
 
-  // Troque pela SUA URL do Apps Script (ou backend)
+  // Monta e envia o resultado
+  const payload = { sala_id, aluno: name, turma: klass, score: state.total, tempo_segundos };
+
   fetch('https://script.google.com/macros/s/AKfycbx4he8aKfhpHBDAvK5R5t1U83H3LdkR-QhIQE8mMZHACSFkE98Hgg09Hm3im7496JaQ/exec', {
     method: 'POST',
-    headers: {'Content-Type':'application/json'},
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
-  }).catch(()=>{/* não quebra o jogo se falhar */});
-  // … ATÉ AQUI ⬆️
+  }).catch(()=>{ /* não quebra o jogo se falhar */ });
+
+  // Vai para a tela final
   swapScreen('#screen-end');
 }
 </script>
