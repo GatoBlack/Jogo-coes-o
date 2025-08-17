@@ -106,7 +106,7 @@
   function startPolling(sala){
     if (timer) clearInterval(timer);
     fetchAndRender(sala); // primeira carga imediata
-    timer = setInterval(() => fetchAndRender(sala), 2000); // atualiza a cada 2s
+    timer = setInterval(() => fetchAndRender(sala), 200); // atualiza a cada 0.2s
   }
 
   async function fetchAndRender(sala){
