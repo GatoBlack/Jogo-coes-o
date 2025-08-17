@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ranking — MariPari EDU</title>
+<style>
+  :root{
+    --bg:#0b0b10; --card:#14141d; --muted:#9aa0a6; --fg:#e8eaed; --accent:#7aa2ff; --ok:#9ae6b4; --warn:#fbd38d;
+    --row:#1b1b26; --row2:#171722; --gold:#f6c945; --silver:#c8ccd1; --bronze:#b97a56;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial}
+  header{padding:16px 20px;border-bottom:1px solid #222;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  h1{font-size:18px;margin:0 12px 0 0}
+  label{font-size:14px;color:var(--muted)}
+  input,button,select{
+    background:#0f0f16;color:var(--fg);border:1px solid #222;border-radius:8px;
+    padding:10px 12px;font-size:15px;outline:none
+  }
+  button{cursor:pointer;border-color:#2b2b3a}
+  button.primary{background:var(--accent);color:#0b0b10;border:none}
+  main{max-width:1000px;margin:16px auto;padding:0 16px}
+  .panel{background:var(--card);border:1px solid #222;border-radius:12px;padding:12px}
+  table{width:100%;border-collapse:separate;border-spacing:0 8px}
+  thead th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 10px}
+  tbody td{
+    background:var(--row);padding:12px 10px;border-top:1px solid #222;border-bottom:1px solid #222
+  }
+  tbody tr:nth-child(even) td{background:var(--row2)}
+  tbody td:first-child{border-left:1px solid #222;border-top-left-radius:10px;border-bottom-left-radius:10px;width:56px}
+  tbody td:last-child{border-right:1px solid #222;border-top-right-radius:10px;border-bottom-right-radius:10px}
+  .rank{display:flex;align-items:center;gap:8px}
+  .medal{width:22px;height:22px;border-radius:50%}
+  .g{background:var(--gold)} .s{background:var(--silver)} .b{background:var(--bronze)}
+  .muted{color:var(--muted)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid #2b2b3a;background:#101019;color:var(--muted)}
+  .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .blink{animation:blink 0.8s ease-out 1}
+  @keyframes blink{0%{outline:2px solid var(--accent)}100%{outline:0}}
+  .empty{padding:28px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Ranking — Jogo da Coesão</h1>
+  <div class="chips">
+    <div class="chip">Maior pontuação primeiro</div>
+    <div class="chip">Empate: menor tempo vence</div>
+  </div>
+  <div class="right">
+    <label for="sala">Sala</label>
+    <input id="sala" placeholder="Ex.: 3A-manhã-01">
+    <button id="start" class="primary">Mostrar</button>
+    <button id="stop">Pausar</button>
+  </div>
+</header>
+
+<main>
+  <div class="panel">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Aluno</th>
+          <th>Turma</th>
+          <th>Pontos</th>
+          <th>Tempo (s)</th>
+          <th class="muted">Atualizado</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="6" class="empty">Digite o código da <b>sala</b> e clique <b>Mostrar</b>.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+(() => {
+  const API_BASE = 'https://script.google.com/macros/s/AKfycbx4he8aKfhpHBDAvK5R5t1U83H3LdkR-QhIQE8mMZHACSFkE98Hgg09Hm3im7496JaQ/exec'; // ⬅️ troque pela URL do seu Apps Script (/exec)
+  const salaInput = document.getElementById('sala');
+  const tbody = document.getElementById('tbody');
+  const btnStart = document.getElementById('start');
+  const btnStop  = document.getElementById('stop');
+
+  let timer = null;
+  let lastSetKey = '';
+
+  // restaura sala do armazenamento local
+  salaInput.value = localStorage.getItem('sala_id') || '';
+
+  btnStart.addEventListener('click', () => {
+    const sala = salaInput.value.trim();
+    if (!sala) { alert('Informe o código da sala.'); salaInput.focus(); return; }
+    localStorage.setItem('sala_id', sala);
+    startPolling(sala);
+  });
+
+  btnStop.addEventListener('click', () => {
+    if (timer) { clearInterval(timer); timer = null; }
+  });
+
+  function startPolling(sala){
+    if (timer) clearInterval(timer);
+    fetchAndRender(sala); // primeira carga imediata
+    timer = setInterval(() => fetchAndRender(sala), 2000); // atualiza a cada 2s
+  }
+
+  async function fetchAndRender(sala){
+    try{
+      const url = `${API_BASE}?sala_id=${encodeURIComponent(sala)}`;
+      const res = await fetch(url, { cache: 'no-store' });
+      const rows = await res.json(); // [{aluno, turma, score, tempo_segundos, ts}, ...]
+      // ordena aqui também (defensivo): score desc, tempo asc
+      rows.sort((a,b) => (b.score - a.score) || (a.tempo_segundos - b.tempo_segundos));
+
+      // chave para saber se mudou
+      const key = JSON.stringify(rows.map(r => [r.aluno, r.score, r.tempo_segundos]));
+      const changed = key !== lastSetKey;
+      lastSetKey = key;
+
+      tbody.innerHTML = '';
+      if (!rows.length){
+        tbody.innerHTML = `<tr><td colspan="6" class="empty">Sem resultados ainda para <b>${sala}</b>.</td></tr>`;
+        return;
+      }
+
+      rows.forEach((r, i) => {
+        const tr = document.createElement('tr');
+        const medal = i===0?'g': i===1?'s': i===2?'b': '';
+        tr.innerHTML = `
+          <td class="rank">${ medal ? `<span class="medal ${medal}"></span>` : (i+1) }</td>
+          <td>${escapeHtml(r.aluno || '—')}</td>
+          <td>${escapeHtml(r.turma || '—')}</td>
+          <td><b>${Number(r.score)||0}</b></td>
+          <td>${Number(r.tempo_segundos)||0}</td>
+          <td class="muted">${formatDate(r.ts)}</td>
+        `;
+        if (changed && i < 5) tr.classList.add('blink');
+        tbody.appendChild(tr);
+      });
+    }catch(e){
+      console.error(e);
+      tbody.innerHTML = `<tr><td colspan="6" class="empty">Erro ao carregar ranking. Verifique a URL da API.</td></tr>`;
+    }
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+  function formatDate(v){
+    // Apps Script manda Date; pode vir como string. Mostra HH:MM:SS local.
+    const d = new Date(v);
+    if (isNaN(d)) return '—';
+    return d.toLocaleTimeString();
+  }
+})();
+</script>
+</body>
+</html>

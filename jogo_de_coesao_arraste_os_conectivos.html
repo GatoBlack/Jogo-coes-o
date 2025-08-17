@@ -49,6 +49,10 @@
         <div class="row">
           <div style="flex:1;min-width:240px"><label class="muted">Nome do aluno</label><input id="student" type="text" placeholder="Seu nome" /></div>
           <div style="flex:1;min-width:180px"><label class="muted">Turma</label><input id="klass" type="text" placeholder="Ex.: 3º A" /></div>
+            <div style="flex:1;min-width:180px">
+    <label class="muted">Sala (código da partida)</label>
+    <input id="sala" type="text" placeholder="Ex.: 3A-manhã-01" />
+  </div>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px"><button id="begin">Começar</button></div>
       </div>
@@ -101,12 +105,18 @@
     function init(){
       $('#student').value = localStorage.getItem('studentName')||'';
       $('#klass').value = localStorage.getItem('studentClass')||'';
+      $('#sala').value = localStorage.getItem('sala_id') || '';
       $('#begin').addEventListener('click', ()=>{
         const name=$('#student').value.trim();
         const klass=$('#klass').value.trim();
-        if(!name||!klass){alert('Preencha nome e turma.');return;}
+        const sala  = $('#sala').value.trim();
+         if(!name || !klass || !sala){                    // ⬅️ AJUSTE
+    alert('Preencha nome, turma e o código da sala.');
+    return;
+  }
         localStorage.setItem('studentName',name);
         localStorage.setItem('studentClass',klass);
+          localStorage.setItem('sala_id', sala);           // ⬅️ NOVO
         $('#who').textContent=name;
         $('#klassWho').textContent=klass;
         swapScreen('#screen-game');
@@ -216,15 +226,54 @@
       state.selectedToken=null;
     }
 
-    function showFinalScreen(timeStr){
-      const name=$('#who').textContent||'Aluno';
-      const klass=$('#klassWho').textContent||'—';
-      $('#finalName').textContent=name;
-      $('#finalClass').textContent=klass;
-      $('#finalScore').textContent = state.total + "/" + state.total;
-      $('#finalTime').textContent=timeStr;
-      swapScreen('#screen-end');
-    }
+   <script>
+// ... (seu código)
+function showFinalScreen(timeStr){
+  const name  = $('#who').textContent || 'Aluno';
+  const klass = $('#klassWho').textContent || '—';
+  const score = state.total;             // no seu jogo, termina com tudo correto
+  // converte "MM:SS" em segundos
+  const [mm, ss] = timeStr.split(':').map(n=>parseInt(n,10));
+  const tempo_segundos = (mm||0)*60 + (ss||0);
+
+  // sala_id: defina um código simples para a turma/partida (ex.: "3A-manha-01")
+  const sala_id = (localStorage.getItem('sala_id') || 'SALA-DEMO');
+
+  fetch('https://script.google.com/macros/s/AKfycbx4he8aKfhpHBDAvK5R5t1U83H3LdkR-QhIQE8mMZHACSFkE98Hgg09Hm3im7496JaQ/exec', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ sala_id, aluno:name, turma:klass, score, tempo_segundos })
+  }).catch(()=>{ /* silêncio: não quebra o jogo se falhar */ });
+
+  // ... resto da sua função:
+  $('#finalName').textContent=name;
+  $('#finalClass').textContent=klass;
+  $('#finalScore').textContent = state.total + "/" + state.total;
+  $('#finalTime').textContent=timeStr;
+    // ⬇️ ADICIONE DAQUI …
+  // Converte "MM:SS" em segundos
+  const [mm, ss] = timeStr.split(':').map(n=>parseInt(n, 10));
+  const tempo_segundos = (mm||0)*60 + (ss||0);
+
+  const sala_id = localStorage.getItem('sala_id') || 'SALA-DEMO';
+  const payload = {
+    sala_id,
+    aluno: name,
+    turma: klass,
+    score: state.total,        // neste jogo todos os acertos
+    tempo_segundos
+  };
+
+  // Troque pela SUA URL do Apps Script (ou backend)
+  fetch('SUA_URL_DO_APPS_SCRIPT_AQUI', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  }).catch(()=>{/* não quebra o jogo se falhar */});
+  // … ATÉ AQUI ⬆️
+  swapScreen('#screen-end');
+}
+</script>
 
     function resetToStart(){
       clearInterval(state.timerId);
