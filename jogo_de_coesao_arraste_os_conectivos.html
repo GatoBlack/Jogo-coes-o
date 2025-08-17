@@ -246,13 +246,18 @@ function showFinalScreen(timeStr){
   const sala_id = localStorage.getItem('sala_id') || 'SALA-DEMO';
 
   // Monta e envia o resultado
-  const payload = { sala_id, aluno: name, turma: klass, score: state.total, tempo_segundos };
+ const form = new URLSearchParams({
+  sala_id,
+  aluno: name,
+  turma: klass,
+  score: String(state.total),
+  tempo_segundos: String(tempo_segundos)
+});
 
-  fetch('https://script.google.com/macros/s/AKfycbx4he8aKfhpHBDAvK5R5t1U83H3LdkR-QhIQE8mMZHACSFkE98Hgg09Hm3im7496JaQ/exec', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload)
-  }).catch(()=>{ /* não quebra o jogo se falhar */ });
+fetch('https://script.google.com/macros/s/AKfycbx4he8aKfhpHBDAvK5R5t1U83H3LdkR-QhIQE8mMZHACSFkE98Hgg09Hm3im7496JaQ/exec', {
+  method: 'POST',
+  body: form
+}).catch(()=>{ /* não quebra o jogo se falhar */ });
 
   // Vai para a tela final
   swapScreen('#screen-end');
